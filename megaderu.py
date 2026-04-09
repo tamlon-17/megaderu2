@@ -155,5 +155,5 @@ if submit_button:
     )
 
     st.plotly_chart(fig, use_container_width=True)
-    st.text('出穂後の平均気温')
+    st.text('播種後の平均気温の推移')
     st.dataframe(df_chart, width=270)
