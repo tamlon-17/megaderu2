@@ -6,38 +6,37 @@ import lxml
 import averagetemplist as atl
 import numpy as np
 
-amedas_l = ['気仙沼', '川渡', '築館', '志津川', '古川', '大衡', '鹿島台',
-            '石巻', '新川', '仙台', '白石', '亘理', '米山', '塩釜', '駒ノ湯',
-            '丸森', '名取', '蔵王', '女川']
-city_l = ['仙台市', '青葉区', '宮城野区', '若林区', '太白区', '泉区', '白石市',
-          '角田市', '蔵王町', '七ヶ宿町', '大河原町', '村田町', '柴田町',
-          '川崎町',
-          '丸森町', '名取市', '岩沼市', '亘理町', '山元町', '塩釜市',
-          '多賀城市',
-          '富谷市', '松島町', '七ヶ浜町', '利府町', '大和町', '大郷町',
-          '大衡村',
-          '大崎市', '色麻町', '加美町', '涌谷町', '美里町', '栗原市', '登米市',
-          '石巻市', '東松島市', '女川町', '気仙沼市', '南三陸町']
+amedas_l = ['丸森', '白石', '蔵王', '亘理', '名取', '仙台', '新川', '塩釜',
+            '大衡', '古川', '川渡', '鹿島台', '築館', '駒ノ湯', '米山', '石巻',
+            '女川', '気仙沼', '志津川']
+city_l = ['白石市', '角田市', '蔵王町', '七ヶ宿町', '大河原町', '村田町',
+          '柴田町', '川崎町', '丸森町', '名取市', '岩沼市', '亘理町', '山元町',
+          '仙台市', '塩釜市', '多賀城市', '富谷市', '松島町', '七ヶ浜町',
+          '利府町', '大和町', '大郷町', '大衡村', '大崎市', '色麻町', '加美町',
+          '涌谷町', '美里町', '栗原市', '登米市', '石巻市', '東松島市',
+          '女川町', '気仙沼市', '南三陸町']
 
-st.set_page_config(page_title='めがで～る！', page_icon='icon.ico')
-st.title('めがで～る！')
-st.caption('水稲の乾田直播の出芽を予測するウェブアプリです。')
-st.text('有効積算気温から、出芽日を予測します。')
+st.set_page_config(page_title='めがで～る２！', page_icon='icon.ico')
+st.caption('水稲乾田直播 出芽予測ウェブアプリ')
+st.title('めがで～る２！')
+st.text('有効積算気温から、乾直（乾籾の場合）の出芽日を予測します。')
 st.text(
-    '実際の出芽のタイミングは、種もみを掘り起こして、出芽状況を確認してください。')
+    '実際の出芽のタイミングは、種もみを掘り起こして確認してください。')
 if st.button('アプリの説明～まずはここを読んでから！'):
     st.switch_page('pages/readme.py')
 
 with st.form(key='input_form'):
     st.header('入力フォーム')
-    a_area = st.selectbox('アメダス地点の選択', amedas_l, index=10)
-    city = st.selectbox('市町村の選択', city_l, index=7)
+    a_area = st.radio('アメダス地点の選択', amedas_l, horizontal=True)
+    city = st.radio('市町村の選択', city_l, horizontal=True)
     seeding_date = st.date_input('播種日')
     # 播種日が3月１日以前の場合は。播種日を３月１日に補正する。
     mar1_day = date(date.today().year, 3, 1)
     seeding_date = seeding_date if (mar1_day < seeding_date) else mar1_day
     begin_date = seeding_date + timedelta(days=1)
-    years = st.text_input('平年値とするデータの年数（直近〇か年）※数字のみ')
+    years = st.slider('平年値の年数（直近〇か年）', min_value=1, max_value=10,
+                      value=5, step=1)
+
     submit_button = st.form_submit_button(label='予測開始')
 
 if submit_button:
@@ -70,9 +69,9 @@ if submit_button:
         end_date = highlight_dates[-1]
 
     st.header('予測結果')
+    st.caption('黄色の網掛け部分が積算気温30～50℃の範囲。緑の点線は平均気温11.5℃のライン。')
 
     fig = go.Figure()
-
     # 平均気温グラフ（右軸に変更）
     fig.add_trace(go.Scatter(
         x=df_chart.index,
@@ -99,7 +98,7 @@ if submit_button:
         y0=30, y1=50,
         yref="y1",  # ← 左軸に変更
         fillcolor="yellow",
-        opacity=0.2,
+        opacity=0.1,
         layer="below",
         line_width=0
     )
@@ -113,7 +112,8 @@ if submit_button:
         y0=0,
         y1=1,
         yref="paper",
-        fillcolor="rgba(255, 102, 146, 0.3)",
+        fillcolor="yellow",
+        opacity=0.2,
         layer="below",
         line_width=0
     )
@@ -134,26 +134,26 @@ if submit_button:
 
         # 左軸（有効積算気温）
         yaxis=dict(
-            title='有効積算気温（℃）',
+            title=dict(text='有効積算気温（℃）', font=dict(color='orange')),
             range=[0, 105],
             dtick=10,
             showgrid=False
         ),
-
         # 右軸（平均気温）
         yaxis2=dict(
-            title='平均気温（℃）',
+            title=dict(text='平均気温（℃）', font=dict(color='green')),
             overlaying='y',
             side='right',
             range=[0, 23],
             dtick=5,
-            showgrid=False
+            showgrid=False,
+
+
         ),
 
         legend=dict(x=0.05, y=0.95),
         hovermode='x unified'
     )
-
     st.plotly_chart(fig, use_container_width=True)
     st.text('播種後の平均気温の推移')
     st.dataframe(df_chart, width=270)
