@@ -1,3 +1,4 @@
+import re
 from datetime import date, timedelta
 import pandas as pd
 import getamedas
@@ -23,31 +24,31 @@ city_dic = dict(仙台市=4100, 青葉区=4101, 宮城野区=4102, 若林区=410
                 東松島市=4214, 女川町=4581, 気仙沼市=4205, 南三陸町=4606)
 
 
-def past_temp_list(area, b_date, e_date):
-    """当年の過去の平均気温のリストを取得する関数
-    
-    getamedasモジュールで指定期間単年度の日別のデータを取得し、平均気温のカラムを切り取る
+def past_rain_list(area, b_date, e_date):
+    """当年の過去の降水量のリストを取得する関数
+
+    getamedasモジュールで指定期間単年度の日別のデータを取得し、降水量のカラムを切り取る
     Args:
         area (str): アメダス地点名
         b_date (date): 取得開始日
         e_date (date): 取得最終日
     Returns:
-        list:平均気温のリスト
+        list:降水量のリスト
     """
     df = getamedas.get_amedas_data(area, b_date, e_date, 1, True)
-    temp_list = list(df['平均気温'])
-    return temp_list
+    rain_l = list(df['降水量'])
+    return rain_l
 
 
-def forecast_temp_list(city, b_day, e_day):
-    """気象協会の天気予報から2週間先までの平均気温を予測する関数
+def forecast_rain_list(city, b_day, e_day):
+    """気象協会の天気予報から2週間先までの降水量を予測する関数
 
     Args:
         city (str):予測する市町村名
         b_day (int):取得開始日
         e_day (int):取得終了日
     Returns:
-        list:平均気温のリスト
+        frl (list):降水量のリスト
     """
     ew_num = 3420 if city in east_city else 3410
     city_num = city_dic[city]
@@ -55,77 +56,64 @@ def forecast_temp_list(city, b_day, e_day):
     res = requests.get(url)
     soup = BeautifulSoup(res.text, 'html.parser')
 
-    def get_tmp(clas_name):
-        tp = soup.find_all('span', class_=clas_name)
-        tlt = [t.text for t in tp]
-        tl = [int(te[:-1]) for te in tlt]
-        return tl
+    def get_rain(clas_name):
+        rsp = soup.find_all('div', class_=clas_name)
+        rlt = [r.text for r in rsp]
+        rl = [int(re.sub(r"\D", "", s)) for s in rlt[1:31]]
+        return rl
 
-    max_tmp_l = get_tmp('high-temp')
-    min_tmp_l = get_tmp('low-temp')
-    # 最高気温と最低気温の平均を平均気温とみなす
-    ftl = [(t1 + t2) / 2 for (t1, t2) in zip(max_tmp_l, min_tmp_l)]
-    ftl = ftl[b_day-1: e_day]
-    return ftl
+    frl = get_rain('precip')
+    frl = frl[b_day - 1: e_day]
+    return frl
 
 
-def normal_temp_list(area, b_date, e_date, years):
-    b_date = date(b_date.year - 1, b_date.month, b_date.day)
-    e_date = date(e_date.year - 1, e_date.month, e_date.day)
-    df = getamedas.get_amedas_data(area, b_date, e_date, years, True)
-    temp_list = list(df['平均気温'])
-    return temp_list
-
-
-def ave_temp_list(area, city, b_date, length, n_years):
-    """平均気温のデータフレームを返す関数
+def rain_list(area, city, b_date, length):
+    """降水量のデータフレームを返す関数
     Args:
         area (str):アメダス地点名
         city (str): 市町村名
-        b_date (date): 平均気温の取得開始日
-        length (int): 平均気温の取得日数(〇日間）
-        n_years (int): 平年値の設定年数(直近〇か年）
+        b_date (date): 降水量の取得開始日
+        length (int): 降水量の取得日数(〇日間）
     Returns:
-        pd.Series:平均気温のデータフレーム
+        pd.Series:降水量のデータフレーム
     """
     e_date = b_date + timedelta(days=length - 1)
     y_date = date.today() - timedelta(days=1)
     tw_date = date.today() + timedelta(days=13)
     tw1_date = date.today() + timedelta(days=14)
-    d_by = (b_date-y_date).days
-    d_ey = (e_date-y_date).days
+    d_by = (b_date - y_date).days
+    d_ey = (e_date - y_date).days
     if e_date <= y_date:
-        temp_list = past_temp_list(area, b_date, e_date)
+        rain_l = past_rain_list(area, b_date, e_date)
     elif b_date <= y_date and e_date <= tw_date:
-        temp_list = past_temp_list(area, b_date, y_date) + \
-            forecast_temp_list(city, 1, d_ey)
+        rain_l = past_rain_list(area, b_date, y_date) + \
+                    forecast_rain_list(city, 1, d_ey)
     elif b_date <= y_date and e_date > tw_date:
-        temp_list = past_temp_list(area, b_date, y_date) + \
-            forecast_temp_list(city, 1, 14) + \
-            normal_temp_list(area, tw1_date, e_date, n_years)
+        rain_l = past_rain_list(area, b_date, y_date) + \
+                    forecast_rain_list(city, 1, 14)
     elif y_date < b_date <= tw_date and e_date <= tw_date:
-        temp_list = forecast_temp_list(city, d_by, d_ey)
-    elif y_date < b_date <= tw_date < e_date:
-        temp_list = forecast_temp_list(city, d_by, 14) + \
-            normal_temp_list(area, tw1_date, e_date, n_years)
+        rain_l = forecast_rain_list(city, d_by, d_ey)
     else:
-        temp_list = normal_temp_list(area, b_date, e_date, n_years)
+        rain_l = forecast_rain_list(city, d_by, 14)
+
+    # temp_list を length に合わせて調整（不足分は 0）
+    if len(rain_l) < length:
+        rain_l += [0] * (length - len(rain_l))
 
     # 日付リストを作成 (スラッシュ区切りフォーマット)
     date_list = [(b_date + timedelta(days=i)).strftime('%Y/%m/%d') for i in
                  range(length)]
-    temp_df = pd.Series(temp_list, index=date_list)
-    return temp_df
+    rain_df = pd.Series(rain_l, index=date_list)
+    return rain_df
 
 
 # 動作確認用
 def main():
     area = '石巻'
     city = '石巻市'
-    b_date = date(2025, 7, 30)
-    length = 30
-    n_years = 2
-    temp_df = ave_temp_list(area, city, b_date, length, n_years)
+    b_date = date(2026, 4, 1)
+    length = 60
+    temp_df = rain_list(area, city, b_date, length)
     print(temp_df)
 
 

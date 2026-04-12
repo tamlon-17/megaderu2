@@ -1,10 +1,10 @@
-import pandas as pd
 from datetime import date, timedelta
-import streamlit as st
-import plotly.graph_objs as go
-import lxml
-import averagetemplist as atl
 import numpy as np
+import pandas as pd
+import plotly.graph_objs as go
+import streamlit as st
+import averagetemplist as atl
+import rain
 
 amedas_l = ['丸森', '白石', '蔵王', '亘理', '名取', '仙台', '新川', '塩釜',
             '大衡', '古川', '川渡', '鹿島台', '築館', '駒ノ湯', '米山', '石巻',
@@ -20,8 +20,7 @@ st.set_page_config(page_title='めがで～る２！', page_icon='icon.ico')
 st.caption('水稲乾田直播 出芽予測ウェブアプリ')
 st.title('めがで～る２！')
 st.text('有効積算気温から、乾直（乾籾の場合）の出芽日を予測します。')
-st.text(
-    '実際の出芽のタイミングは、種もみを掘り起こして確認してください。')
+st.text('実際の出芽のタイミングは、種もみを掘り起こして確認してください。')
 if st.button('アプリの説明～まずはここを読んでから！'):
     st.switch_page('pages/readme.py')
 
@@ -46,18 +45,20 @@ if submit_button:
     ef_temp_list = [0 if xx * 10 <= 115 else round(xx - 11.5, 1) for xx in
                     ave_temp_series]
     cum_temp_series = np.array(ef_temp_list).cumsum()
-    df_chart90 = pd.DataFrame({
+    rain_list = rain.rain_list(a_area, city, begin_date, 80)
+    df_chart80 = pd.DataFrame({
         '平均気温': ave_temp_series,
-        '有効積算気温': cum_temp_series
+        '有効積算気温': cum_temp_series,
+        '降水量': rain_list
     })
     threshold = 100  # ここに好きな閾値を入れる
     # 積算気温が threshold を超えた最初の行の index を取得
-    cut_idx = df_chart90[df_chart90['有効積算気温'] > threshold].index
+    cut_idx = df_chart80[df_chart80['有効積算気温'] > threshold].index
     # 超えた行が存在する場合、その行までを切り出す
     if len(cut_idx) > 0:
-        df_chart = df_chart90.loc[:cut_idx[0]]
+        df_chart = df_chart80.loc[:cut_idx[0]]
     else:
-        df_chart = df_chart90.copy()
+        df_chart = df_chart80.copy()
 
     # 30〜50℃に該当する行を抽出
     mask = (df_chart['有効積算気温'] >= 30) & (
@@ -69,7 +70,8 @@ if submit_button:
         end_date = highlight_dates[-1]
 
     st.header('予測結果')
-    st.caption('黄色の網掛け部分が積算気温30～50℃の範囲。緑の点線は平均気温11.5℃のライン。')
+    st.caption(
+        '黄色の網掛け部分が積算気温30～50℃の範囲。緑の点線は平均気温11.5℃のライン。')
 
     fig = go.Figure()
     # 平均気温グラフ（右軸に変更）
@@ -88,6 +90,16 @@ if submit_button:
         name='有効積算気温',
         line=dict(color='orange'),
         yaxis='y1'  # ← 左軸へ変更
+    ))
+
+    # 降水量の棒グラフ（右軸）
+    fig.add_trace(go.Bar(
+        x=df_chart.index,
+        y=df_chart['降水量'],
+        name='降水量',
+        marker=dict(color='blue'),
+        opacity=0.3,
+        yaxis='y2'
     ))
 
     # 積算気温の帯（y1 に合わせる）
@@ -141,19 +153,17 @@ if submit_button:
         ),
         # 右軸（平均気温）
         yaxis2=dict(
-            title=dict(text='平均気温（℃）', font=dict(color='green')),
+            title=dict(text='<span style="color:blue;">降水量（mm）</span>・'
+                            '<span style="color:green;">平均気温（℃）</span>'),
             overlaying='y',
             side='right',
-            range=[0, 23],
+            range=[0, 25],
             dtick=5,
             showgrid=False,
-
-
         ),
-
         legend=dict(x=0.05, y=0.95),
         hovermode='x unified'
     )
     st.plotly_chart(fig, use_container_width=True)
-    st.text('播種後の平均気温の推移')
-    st.dataframe(df_chart, width=270)
+    st.text('播種後の平均気温と降水量')
+    st.dataframe(df_chart, width=360)

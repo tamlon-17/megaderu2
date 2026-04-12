@@ -7,9 +7,9 @@
 
 from datetime import date, timedelta
 from io import BytesIO
+
 import numpy as np
 import pandas as pd
-import lxml
 
 
 def amedas_area(area):
@@ -235,9 +235,6 @@ def date_index(b_date, e_date):
 
 def harf_index(b_date, e_date):
     index_list = []
-
-
-
 
 
 def get_amedas_data(area, b_date: date, e_date: date, years, is_daily):
