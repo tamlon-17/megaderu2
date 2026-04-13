@@ -98,7 +98,7 @@ if submit_button:
         y=df_chart['降水量'],
         name='降水量',
         marker=dict(color='blue'),
-        opacity=0.3,
+        opacity=0.4,
         yaxis='y2'
     ))
 
@@ -110,7 +110,7 @@ if submit_button:
         y0=30, y1=50,
         yref="y1",  # ← 左軸に変更
         fillcolor="yellow",
-        opacity=0.1,
+        opacity=0.3,
         layer="below",
         line_width=0
     )
@@ -125,7 +125,7 @@ if submit_button:
         y1=1,
         yref="paper",
         fillcolor="yellow",
-        opacity=0.2,
+        opacity=0.4,
         layer="below",
         line_width=0
     )
