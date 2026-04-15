@@ -60,6 +60,32 @@ if submit_button:
     else:
         df_chart = df_chart80.copy()
 
+    # --- 30℃・50℃・100℃に達した日付と積算気温を表示 ---
+    def reach(df, th):
+        # df の index が str の可能性があるので、ここだけ datetime に変換
+        df = df.copy()
+        df.index = pd.to_datetime(df.index)
+
+        # 到達日を取得
+        idx = df[df['有効積算気温'] >= th].index[0]
+
+        temp = df.loc[idx, '有効積算気温']
+        return idx, temp
+
+
+    date30, temp30 = reach(df_chart, 30)
+    date50, temp50 = reach(df_chart, 50)
+    date100, temp100 = reach(df_chart, 100)
+
+
+    def jp_date(d):
+        return f"{d.month}月{d.day}日"
+
+
+
+
+
+
     # 30〜50℃に該当する行を抽出
     mask = (df_chart['有効積算気温'] >= 30) & (
             df_chart['有効積算気温'] <= 50)
@@ -70,6 +96,11 @@ if submit_button:
         end_date = highlight_dates[-1]
 
     st.header('予測結果')
+    st.subheader('積算気温の到達日')
+    st.write(f"30℃ 到達：{jp_date(date30)}（積算 {temp30:.1f}℃）")
+    st.write(f"50℃ 到達：{jp_date(date50)}（積算 {temp50:.1f}℃）")
+    st.write(f"100℃ 到達：{jp_date(date100)}（積算 {temp100:.1f}℃）")
+    st.subheader('気温と降水量のグラフ')
     st.caption(
         '黄色の網掛け部分が積算気温30～50℃の範囲。緑の点線は平均気温11.5℃のライン。')
 
